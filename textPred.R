@@ -1,6 +1,6 @@
 rm(list=ls())
 library(R.utils)
-library(rPython)
+# library(rPython)
 library(ggplot2) 
 library(NLP) 
 library(openNLP) 
@@ -14,13 +14,15 @@ library(data.table)
 source("cleanStrings.R")
 source("cleanCorpus.R")
 
+makePlots <- FALSE
+
 # file connections
 en_US_blog    <- file("../Capstone_Project_data/en_US/en_US.blogs.txt")
 en_US_twitter <- file("../Capstone_Project_data/en_US/en_US.twitter.txt")
 en_US_news    <- file("../Capstone_Project_data/en_US/en_US.news.txt")
 
 # read first n lines from each data file
-n <- 3000
+n <- 4000
 blogtxt    <- readLines(en_US_blog, n)
 twittertxt <- readLines(en_US_twitter, n)
 newstxt    <- readLines(en_US_news, n)
@@ -76,19 +78,26 @@ frequencies   <- sort(termFreq, decreasing=TRUE)
 wf            <- data.table(word=names(frequencies), freq=frequencies, percent = frequencies/totalNbrOfTerms, key = "percent")
 wf            <- setorder(wf, -percent)
 
-# make frequency bar plot
-n <- 500
-p <- ggplot(wf[wf$freq > n,], aes(x=reorder(word, -freq), y = freq)) 
-p <- p + geom_bar(stat="identity", fill="lightblue") + theme_bw() 
-p <- p + ylab("Word Frequency") + xlab("Words")
-p <- p + theme(axis.text.x=element_text(angle=45, hjust=1)) 
-print(p)
+if(makePlots){
+        
+        # make frequency bar plot
+        n <- 500
+        p <- ggplot(wf[wf$freq > n,], aes(x=reorder(word, -freq), y = freq)) 
+        p <- p + geom_bar(stat="identity", fill="lightblue") + theme_bw() 
+        p <- p + ylab("Word Frequency") + xlab("Words")
+        p <- p + theme(axis.text.x=element_text(angle=45, hjust=1)) 
+        print(p)
+        
+        # make frequency plot for top 100 terms
+        within(wf[1:100,], 
+               plot(wf$percent[1:100]~row.names(wf[1:100,]), type="b", col="blue", log="y", 
+                    xlab="Term Index", ylab="Percentage", main="Single Term Frequency, Top 100 Terms") 
+        )
+}
 
-# make frequency plot for top 100 terms
-within(wf[1:100,], 
-       plot(wf$percent[1:100]~row.names(wf[1:100,]), type="b", col="blue", log="y", 
-            xlab="Term Index", ylab="Percentage", main="Single Term Frequency, Top 100 Terms") 
-)
+wf$percent <- NULL
+setnames(wf, c('w1', 'freq'))
+setkeyv(wf, c('w1', 'freq'))
 
 #---------------------------------------------------------------------------------------------------#
 # n-gram stuff -------------------------------------------------------------------------------------#
@@ -144,54 +153,58 @@ frequencies     <- sort(rowSums(as.matrix(freq)), decreasing=TRUE)
 quadf           <- data.table(word=names(frequencies), freq=frequencies)
 quadf           <- setorder(quadf, -freq)
 
-# bigram freq plot
-# make frequency bar plot
-n <- 50
-pbi <- ggplot(bif[bif$freq > n,], aes(x=reorder(word, -freq), y = freq)) 
-pbi <- pbi + geom_bar(stat="identity", fill="orange") + theme_bw() 
-pbi <- pbi + ylab("Word Frequency") + xlab("bi-grams")
-pbi <- pbi + theme(axis.text.x=element_text(angle=45, hjust=1)) 
-print(pbi)
-
-# trigram freq plot
-# make frequency bar plot
-n <- 10
-ptri <- ggplot(trif[trif$freq > n,], aes(x=reorder(word, -freq), y = freq)) 
-ptri <- ptri + geom_bar(stat="identity", fill="lightgreen") + theme_bw() 
-ptri <- ptri + ylab("Word Frequency") + xlab("tri-grams")
-ptri <- ptri + theme(axis.text.x=element_text(angle=45, hjust=1)) 
-print(ptri)
-
-# quadgram freq plot
-# make frequency bar plot
-n <- 2
-pquad <- ggplot(quadf[quadf$freq > n,], aes(x=reorder(word, -freq), y = freq)) 
-pquad <- pquad + geom_bar(stat="identity", fill="lightgreen") + theme_bw() 
-pquad <- pquad + ylab("Word Frequency") + xlab("quad-grams")
-pquad <- pquad + theme(axis.text.x=element_text(angle=45, hjust=1)) 
-print(pquad)
+if(makePlots){
+        # bigram freq plot
+        # make frequency bar plot
+        n <- 50
+        pbi <- ggplot(bif[bif$freq > n,], aes(x=reorder(word, -freq), y = freq)) 
+        pbi <- pbi + geom_bar(stat="identity", fill="orange") + theme_bw() 
+        pbi <- pbi + ylab("Word Frequency") + xlab("bi-grams")
+        pbi <- pbi + theme(axis.text.x=element_text(angle=45, hjust=1)) 
+        print(pbi)
+        
+        # trigram freq plot
+        # make frequency bar plot
+        n <- 10
+        ptri <- ggplot(trif[trif$freq > n,], aes(x=reorder(word, -freq), y = freq)) 
+        ptri <- ptri + geom_bar(stat="identity", fill="lightgreen") + theme_bw() 
+        ptri <- ptri + ylab("Word Frequency") + xlab("tri-grams")
+        ptri <- ptri + theme(axis.text.x=element_text(angle=45, hjust=1)) 
+        print(ptri)
+        
+        # quadgram freq plot
+        # make frequency bar plot
+        n <- 2
+        pquad <- ggplot(quadf[quadf$freq > n,], aes(x=reorder(word, -freq), y = freq)) 
+        pquad <- pquad + geom_bar(stat="identity", fill="lightgreen") + theme_bw() 
+        pquad <- pquad + ylab("Word Frequency") + xlab("quad-grams")
+        pquad <- pquad + theme(axis.text.x=element_text(angle=45, hjust=1)) 
+        print(pquad)
+}
 
 #---------------------------------------------------------------------------------------------------#
 # predict ------------------------------------------------------------------------------------------#
 #---------------------------------------------------------------------------------------------------#
-trif[like(word, "^i had")][1:3]
-strsplit(trif[like(word, "^i have")][1:3]$word[1], " ")
-strsplit(trif[like(word, "^i have")][1:3]$word[1], " ")[[1]][3]
 
+# trif[like(word, "^i had")][1:3]
+# strsplit(trif[like(word, "^i have")][1:3]$word[1], " ")
+# strsplit(trif[like(word, "^i have")][1:3]$word[1], " ")[[1]][3]
+
+# faster way to search data.tables 
 bif[, word:=strsplit(word, '\\s')]
 bif[, `:=`(w1=sapply(word, function(s) s[1]),
            w2=sapply(word, function(s) s[2]),
            word=NULL)]
-setkeyv(bif, c('w1', 'freq'))
+setkeyv(bif, c('w1', 'w2','freq'))
 
-trif[list('i', 'love')][1:3]
+bif[list('i')][1:3]
 
 trif[, word:=strsplit(word, '\\s')]
 trif[, `:=`(w1=sapply(word, function(s) s[1]),
             w2=sapply(word, function(s) s[2]),
             w3=sapply(word, function(s) s[3]),
             word=NULL)]
-setkeyv(trif, c('w1', 'w2', 'freq'))
+setkeyv(trif, c('w1', 'w2', 'w3', 'freq'))
 
 trif[list('i', 'love')][1:3]
 
@@ -202,4 +215,41 @@ quadf[, `:=`(w1=sapply(word, function(s) s[1]),
              w3=sapply(word, function(s) s[3]),
              w4=sapply(word, function(s) s[4]),
              word=NULL)]
-setkeyv(quadf, c('w1', 'w2', 'w3', 'freq'))
+setkeyv(quadf, c('w1', 'w2', 'w3', 'w4', 'freq'))
+
+print(setorder(trif[list('i', 'am')], -'freq'))
+
+bif[list('the', 'man'), sum(freq)]
+trif[list('the', 'man'), sum(freq)]
+quadf[list('the', 'man'), sum(freq)]
+
+
+wf[list('the'), sum(freq)]
+bif[list('the'), sum(freq)]
+trif[list('the'), sum(freq)]
+quadf[list('the'), sum(freq)]
+
+# add probabilities
+wf[, prob:=freq/nrow(wf)]
+bif[, prob:=freq/nrow(bif)]
+trif[, prob:=freq/nrow(trif)]
+quadf[, prob:=freq/nrow(quadf)]
+
+# write files 
+saveRDS(wf, 'unigrams.Rds')
+saveRDS(bif, 'bigrams.Rds')
+saveRDS(trif, 'trigrams.Rds')
+saveRDS(quadf, 'quadgrams.Rds')
+
+# test how to merge data tables 
+quadf.subset <- quadf[sample(1:nrow(quadf), 1e5)]
+setkeyv(quadf.subset, c('w1', 'w2', 'w3', 'w4', 'freq'))
+
+quadf.all <- merge(quadf, quadf.subset, all = T, by=c('w1', 'w2', 'w3','w4'))
+quadf.all[ , freq :=rowSums(.SD, na.rm = TRUE), .SDcols = c("freq.x", "freq.y")]
+quadf.all[ , c('freq.x', 'freq.y', 'prob.x', 'prob.y') := NULL] 
+
+txt      <- "the"
+txt.list <- as.list(strsplit(txt, " ")[[1]])
+print(setorder(quadf[txt.list], -'freq')[1:5])
+
