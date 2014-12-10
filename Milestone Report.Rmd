@@ -1,0 +1,107 @@
+---
+title: 'JHU and SwiftKey Data Science Capstone Project: \n Natural Language Proecssing'
+author: "Aous \"Alex\" Abdo"
+date: "November 16, 2014"
+output: html_document
+---
+
+## Introduction
+If you have tried to type a long message/email on your smart phone you probably know how frustrating and hard it can be to type every single letter of every single word you'd like to include in your message/email. The aim of this project is to demonestrate that one can make this task easier by the use of Natural Langauge Processing (NLP), an interdesciplinary field between computer science, statistics, artificial intelligence, and liguistics, more details on NLP can be found in this [Wikipedia](http://en.wikipedia.org/wiki/Natural_language_processing) article.
+
+The final product of this project will be a Shiny web application that a user can use to predict 
+
+## Exploratory Data Analysis
+The first step we will take is to develop an understanding of the statistical properties of the corpora (plural of corpus which is a collection of documents/books/etc.) which will allow us to build a robust prediction model. Our modeling will be built around word and word combination frequencies. We will mine the corpora we have for the most frequent words, most frequent couples of words, most frequenct triplets of words and so forth. So in short we will be building a probabilistic model of words and their combinatinos using the corpora we have. Building a probabilistic model has the advantage of easy training, that is, we can make our probabilistic model by training it on more datasets. 
+
+Before we look at word frequencies let's have a quick look at the data we have.
+
+### Getting and Cleaning the Data
+The data we will be using in this project comes from the [HC Corpora project](www.corpora.heliohost.org) and can be downloaded [here](https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip). The dataset contains several corpora in four language, English, German, Russian, and Finish. At this point we will only be using the English corpora. 
+
+Let's first load the packages we will be using in our analysis:
+```{r message=FALSE}
+library(R.utils)
+library(rPython)
+library(ggplot2) 
+library(NLP) 
+library(openNLP) 
+library(RWeka) 
+library(tm)
+```
+We have a total of three "English" corpora, one from blog posts (`en_US_blogs.txt`), one from Twitter posts (`en_US_twitter.txt`), and one from news feeds (`en_US_news.txt`). Let's take a quick at the files' properties and what kind of data they contains:
+
+```{r}
+# Open file connections
+en_US_blog    <- file("../Capstone_Project_data/en_US/en_US.blogs.txt")
+en_US_twitter <- file("../Capstone_Project_data/en_US/en_US.twitter.txt")
+en_US_news    <- file("../Capstone_Project_data/en_US/en_US.news.txt")
+
+blogfileInfo    <- file.info("../Capstone_Project_data/en_US/en_US.blogs.txt")
+twitterfileInfo <- file.info("../Capstone_Project_data/en_US/en_US.twitter.txt")
+newsfileInfo    <- file.info("../Capstone_Project_data/en_US/en_US.news.txt")
+
+numlinesblog <- system("wc -l ../Capstone_Project_data/en_US/en_US.blogs.txt", intern = TRUE)
+numlinesblog <- as.numeric(strsplit(numlinesblog, " ")[[1]][3])
+
+numlinestwit <- system("wc -l ../Capstone_Project_data/en_US/en_US.twitter.txt", intern = TRUE)
+numlinestwit <- as.numeric(strsplit(numlinestwit, " ")[[1]][2])
+
+numlinesnews <- system("wc -l ../Capstone_Project_data/en_US/en_US.news.txt", intern = TRUE)
+numlinesnews <- as.numeric(strsplit(numlinesnews, " ")[[1]][2])
+
+cat(sprintf(" blog file has: %d lines and is %.2f MB in size\n",numlinesblog, blogfileInfo$size/1e6), 
+    sprintf("news file has: %d lines and is %.2f MB in size\n",numlinesnews, twitterfileInfo$size/1e6),
+    sprintf("twitter file has: %d lines and is %.2f MB in size\n",numlinestwit, newsfileInfo$size/1e6))
+```
+
+Next we look at the first two lines of each of the files:
+```{r, cache=TRUE}
+readLines(en_US_blog, 2)
+readLines(en_US_news, 2)
+readLines(en_US_twitter, 2)
+```
+
+So each of these three corpora conatain lines of text. 
+## Random Sampling from Data
+One problem we might be facing with such large files is the fact that R runs every thing in RAM. This means that if we were to read all of the lines in the corpora, millinos of lines, we might run out of memory and our algorihms will take a long time to run. One way to avoid this is to draw a small random sample of the data. 
+
+We took a quick look at the three differnet files and found no evidence that there were sorted in any fashion. Thus we will just take a subsample of the first 100,000 lines from each file. We will then merge each of these subsets in one subset
+
+```{r cache = TRUE}
+# read first 100,000 lines from each data file
+blogtxt <- readLines(en_US_blog, 10000)
+twittertxt <- readLines(en_US_twitter, 10000)
+newstxt <- readLines(en_US_news, 10000)
+
+# merge subsets in one dataset to use for the rest of the analysis
+txt <- paste(blogtxt, twittertxt, newstxt)
+```
+
+We will be using the `ITSA` R package for most of the following steps. This is a package I developed as part of one of my previous jobs. This is proprietary package that is not available for the public. But in short, it is a wrapper for some text mining functions in the `tm` package. 
+
+### Corpus Buidling and Preparation
+Build corpus from the merge text file above: 
+
+```{r, cache=TRUE}
+corpus <- VCorpus(VectorSource(txt))
+```
+
+Clean corpus using `tm` package, we clean the corpus by: 
+1. Remove profanity words
+2. Remove extra white spaces
+3. Remove numbers
+4. Remove punctuations
+5. Convert letters to lower case
+
+```{r, cache=TRUE}
+# read list of bad words
+badwords    <- VectorSource(readLines("badwords.txt"))
+# remove profanity words
+corpus.tmp <- tm_map(corpus, removeWords, badwords) 
+# remove white spaces
+corpus.tmp <- tm_map(corpus.tmp, stripWhitespace)
+# remove numbers
+corpus.tmp <- tm_map(corpus.tmp, removeNumbers)
+# remove puncuations
+corpus.tmp <- tm_map(corpus.tmp, removePunctuation)
+```
