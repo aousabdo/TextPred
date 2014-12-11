@@ -22,7 +22,7 @@ en_US_twitter <- file("../Capstone_Project_data/en_US/en_US.twitter.txt")
 en_US_news    <- file("../Capstone_Project_data/en_US/en_US.news.txt")
 
 # read first n lines from each data file
-n <- 4000
+n <- 10000
 blogtxt    <- readLines(en_US_blog, n)
 twittertxt <- readLines(en_US_twitter, n)
 newstxt    <- readLines(en_US_news, n)
@@ -236,10 +236,10 @@ trif[, prob:=freq/nrow(trif)]
 quadf[, prob:=freq/nrow(quadf)]
 
 # write files 
-saveRDS(wf, 'unigrams.Rds')
-saveRDS(bif, 'bigrams.Rds')
-saveRDS(trif, 'trigrams.Rds')
-saveRDS(quadf, 'quadgrams.Rds')
+saveRDS(wf, 'unigrams10000.Rds')
+saveRDS(bif, 'bigrams10000.Rds')
+saveRDS(trif, 'trigrams10000.Rds')
+saveRDS(quadf, 'quadgrams10000.Rds')
 
 # test how to merge data tables 
 quadf.subset <- quadf[sample(1:nrow(quadf), 1e5)]
